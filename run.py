@@ -1,34 +1,8 @@
-# -*- coding: utf-8 -*-
-# %matplotlib inline
-#%load_ext autoreload
-#%autoreload 2
 import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session, set_learning_phase
-#set_learning_phase(0)
-"""config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-set_session(tf.Session(config=config))"""
-
+from keras.backend.tensorflow_backend import set_session
 import settings
 import os
 
-play_vs_self = False    # set this to true to take control of all 4 players
-play_vs_agent = False   # set this to true to play against a trained
-version_testing = False # pit two models version against eachother 
-ismcts_agent_test = False   # test against the non-NN implementation of ISMCTS
-
-
-############ Set debugging to true to delete the log folders every time you run the program
-debugging = False
-
-if debugging:
-    exists = os.path.isfile(settings.run_folder + 'logs/logger_main.log')
-    if exists:
-        os.remove(settings.run_folder + 'logs/logger_main.log')
-
-    exists = os.path.isfile(settings.run_folder + 'logs/logger_mcts.log')
-    if exists:
-        os.remove(settings.run_folder + 'logs/logger_mcts.log')
 
 import numpy as np
 np.set_printoptions(suppress=True)
@@ -37,10 +11,6 @@ seed = 808 # np.random.random_integers(0,5000)
 np.random.seed(seed=seed)
 
 from shutil import copyfile
-import random
-py_seed = 967 #random.randint(0,1000)
-#print("Python seed: {0}".format(py_seed))
-random.seed(py_seed)
 from importlib import reload
 import sys
 
@@ -62,7 +32,7 @@ import initialise
 import pickle
 
 import config
-from config import PLAYER_COUNT, TEAM_SIZE, DECISION_TYPES, MEMORY_SIZE, ALL_VERSION_TOURNAMENT
+from config import PLAYER_COUNT, TEAM_SIZE, DECISION_TYPES, MEMORY_SIZE
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -78,127 +48,9 @@ if initialise.INITIAL_RUN_NUMBER != None:
     copyfile(run_archive_folder + env.name + '/run' + str(initialise.INITIAL_RUN_NUMBER).zfill(4) + '/config.py',
              './config.py')
 
-if ismcts_agent_test:
-    testing_agent = testing_agent(150, 'tester',env.action_size)
-    user = User("User1", env.state_size, env.action_size)
-    low_NN = []
-    for i in range(DECISION_TYPES):
-        low_NN.append(Residual_CNN(config.REG_CONST, config.LEARNING_RATE, (1,) + env.grid_shape, env.action_size[i],
-                            config.HIDDEN_CNN_LAYERS, i))
-
-    # create low agent
-    low_agent = Agent('low_agent', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, low_NN)
-    low_agent2 = Agent('low_agent2', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, low_NN)
-
-
-    players = [testing_agent, low_agent]
-
-    scores, _, _ = version_tournament(players,100,lg.logger_main)
-    print(scores)
-    exit(0)
-
-# plays every model version up to the value of high against every 5th version below it
-if ALL_VERSION_TOURNAMENT:
-    handler = logging.FileHandler(run_folder + 'logs/logger_all_version_tournament.log')
-
-    logger_all_version_tournament = logging.getLogger('logger_all_version_tournament')
-    logger_all_version_tournament.setLevel(logging.INFO)
-    if not logger_all_version_tournament.handlers:
-        logger_all_version_tournament.addHandler(handler)
-
-    logger_all_version_tournament.info("High\tLow\twin %")
-
-    
-    high_NN = []
-
-    # create an untrained neural network objects from the config file
-    for i in range(DECISION_TYPES):
-        high_NN.append(Residual_CNN(config.REG_CONST, config.LEARNING_RATE, (1,) + env.grid_shape, env.action_size[i],
-                                    config.HIDDEN_CNN_LAYERS, i))
-
-    high = 32
-    matches = 100
-    while high <= 32:
-        low = 0
-        # load high model
-        print('LOADING HIGH VERSION ' + str(high) + '...')
-        if high != 0:
-            for i in range(DECISION_TYPES):
-                m_tmp = high_NN[i].read(env.name, initialise.INITIAL_RUN_NUMBER, high)
-                high_NN[i].model.set_weights(m_tmp.get_weights())
-
-        # create high agent
-        high_agent = Agent('high_agent', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, high_NN)
-
-        while low <= high:
-            # load low model
-            print('LOADING LOW VERSION ' + str(low) + '...')
-            if low == 0:
-                low_NN = []
-                for i in range(DECISION_TYPES):
-                    low_NN.append(Residual_CNN(config.REG_CONST, config.LEARNING_RATE, (1,) + env.grid_shape, env.action_size[i],
-                                        config.HIDDEN_CNN_LAYERS, i))
-            else:
-                for i in range(DECISION_TYPES):
-                    m_tmp = low_NN[i].read(env.name, initialise.INITIAL_RUN_NUMBER, low)
-                    low_NN[i].model.set_weights(m_tmp.get_weights())
-
-            # create low agent
-            low_agent = Agent('low_agent', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, low_NN)
-
-            # create list of players for games
-            players = []
-            players.append(high_agent)
-            players.append(low_agent)
-            #players.append(high_agent)
-            #players.append(low_agent)
-
-            # play 50 games
-            scores, _, _ = version_tournament(players,matches,lg.logger_main)
-            win_perc = round(100 * (scores['high_agent'] / matches),2)
-            logger_all_version_tournament.info("{0}\t{1}\t{2}".format(high,low,win_perc))
-            print("{0} vs. {1}, high win %: {2}".format(high,low,win_perc))
-
-            low += 10
-        high += 20
-    exit(0)
-
-if version_testing:
-    num_matches = 5
-    run_version_1 = 1
-    run_version_2 = 2
-    mem_version_1 = 1
-    mem_version_2 = 1
-
-    num_tournies = 20
-    total_games = num_tournies * 30
-
-    player_1_total = 0
-    sp_total = 0
-    for i in range(num_tournies):
-        print("Tourney {0} of {1}".format(i+1,num_tournies))
-        scores, memory, points, sp_scores = playMatchesBetweenVersions(env,run_version_1,run_version_2,mem_version_1,mem_version_2,30,lg.logger_tourney,10)
-        player_1_total += scores['player1']
-        sp_total += sp_scores['sp']
-        print('\n')
-        win_perc = round(float(player_1_total / ((i+1) * 30)) * 100, 4)
-        sp_win_perc = round(float(sp_total / ((i+1) * 30)) * 100, 4)
-
-        print("\n")
-        print("Trained agent has a win percentage of {0}% after {1} games.".format(win_perc, ((i+1) * 30)))
-        print("Starting player has a win percentage of {0}% after {1} games.".format(sp_win_perc, ((i+1) * 30)))
-        print('\n')
-    exit(-1)
-
-
-
-
-
 ######## LOAD MEMORIES IF NECESSARY ########
 
-# the replay function retrains based on memory and there is no
-# state to get the decision type from so I'm going to make separate
-# memories for now
+# The memories are in an array for games with multiple types of decisions. Each decision type has it's own memories.
 memories = []
 
 
@@ -257,31 +109,8 @@ if initialise.INITIAL_ITERATION != None:
 else:
     iteration = 0
 
-
-if play_vs_self:
-    reload(lg)
-    reload(config)
-    user_players = []
-    user_players.append(User('User1', env.state_size, env.action_size))
-    user_players.append(User('User2', env.state_size, env.action_size))
-    user_players.append(User('User3', env.state_size, env.action_size))
-    user_players.append(User('User4', env.state_size, env.action_size))
-
-    playMatches(user_players,1,lg.logger_main,500)
-
-if play_vs_agent:
-    players = []
-    players.append(User('User1', env.state_size, env.action_size))
-    players.append(best_player)
-    players.append(User('User2', env.state_size, env.action_size))
-    players.append(best_player)
-
-    playMatches(players,1,lg.logger_main,0)
-    exit(0)
-
-memories = fillMem([testing_agent(config.MCTS_SIMS, 'tester1', env.action_size), testing_agent(150, 'tester2', env.action_size)], memories)
-
 trained = False
+epsilon = init_epsilon = 0.75
 
 while 1:
 
@@ -303,9 +132,11 @@ while 1:
     ######## SELF PLAY ########
     print('SELF PLAYING ' + str(config.EPISODES) + ' EPISODES...')
     _, memories, _ = playMatches(best_players, config.EPISODES, lg.logger_main,
-                                  1.0, memory=memories)
+                                  epsilon, memory=memories)
     print('\n')
     
+    epsilon -= init_epsilon / 200.0
+
     full_memory = True
 
     for d_t,memory in enumerate(memories):
@@ -327,7 +158,7 @@ while 1:
             lg.logger_memory.info('NEW MEMORIES')
             lg.logger_memory.info('====================')
 
-            memory_samp = random.sample(memory.ltmemory, min(1000, len(memory.ltmemory)))
+            """memory_samp = random.sample(memory.ltmemory, min(1000, len(memory.ltmemory)))
 
             for s in memory_samp:
                 current_value, current_probs, _ = current_player.get_preds(s['state'],d_t)
@@ -342,23 +173,7 @@ while 1:
                 lg.logger_memory.info('ID: %s', s['state'].id)
                 lg.logger_memory.info('INPUT TO MODEL: %s', current_player.model[d_t].convertToModelInput(s['state']))
 
-                s['state'].render(lg.logger_memory)
-            
-            #set_learning_phase(0)   # set learning phase back to 0
-
-            #if len(memory.ltmemory) < MEMORY_SIZE[d_t]:
-                #full_memory = False
-        #else:
-            #full_memory = False
-
-    """if full_memory and MEMORY_SIZE < config.MAX_MEMORY_SIZE:
-        print("extending memory!")
-
-        MEMORY_SIZE += config.MEM_INCREMENT
-
-        print("new mem size: {0}".format(MEMORY_SIZE))
-        for memory in memories:
-            memory.extension(MEMORY_SIZE)"""
+                s['state'].render(lg.logger_memory)"""
     
     if trained:
         ######## TOURNAMENT ########
@@ -369,14 +184,7 @@ while 1:
         # so instead I made an list of players where two randomly sampled best_players are across from eachother
         # and 2 copies of the current player are across from each other
         #best_players = np.random.shuffle(best_players)
-        """if iteration < 20:
-            matches = 3
-        elif iteration < 40:
-            matches = 5
-        elif iteration < 80:
-            matches = 7
-        else:
-            matches = 9"""
+
         tourney_players = []
         for i in range(int(PLAYER_COUNT / TEAM_SIZE)):
             tourney_players.append(best_players[i])

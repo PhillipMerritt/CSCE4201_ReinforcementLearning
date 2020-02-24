@@ -38,7 +38,7 @@ class User():
         return (action, pi, value, NN_value)
 
 
-class Agent():
+class ISMCTS_Agent():
     def __init__(self, name, state_size, action_size, mcts_simulations, cpuct, model):
         self.name = name
 
@@ -281,7 +281,8 @@ class Agent():
         lg.logger_mcts.info('****** CHANGING ROOT OF MCTS TREE TO %s FOR AGENT %s ******', state.id, self.name)
         self.mcts.root = self.mcts.tree[state.id]
 
-class testing_agent(Agent):
+# uses a non-NN version of ISMCTS. Generally performs well w/o any training.
+class testing_agent(ISMCTS_Agent):
     def __init__(self, mcts_simulations, name, action_size):
         self.name = name
         self.MCTSsimulations = mcts_simulations

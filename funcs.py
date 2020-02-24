@@ -9,10 +9,10 @@ import sys
 from game import Game, GameState
 from model import Residual_CNN
 
-from agent import Agent, User
+from agent import *
 
 import config
-from config import PLAYER_COUNT, TEAM_SIZE
+from config import PLAYER_COUNT, TEAM_SIZE, TREE_TYPE
 
 from collections import defaultdict
 
@@ -25,8 +25,12 @@ def playMatchesBetweenVersions(env, run_version_1,run_version_2, player1version,
 
         if player1version > 0:
             player1_network = player1_NN.read(env.name, run_version_1, player1version)
-            player1_NN.model.set_weights(player1_network.get_weights())   
-        player1 = Agent('player1', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, player1_NN)
+            player1_NN.model.set_weights(player1_network.get_weights())
+
+        if TREE_TYPE == 'ISMCTS':   
+            player1 = ISMCTS_Agent('player1', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, player1_NN)
+        elif TREE_TYPE == 'ALPHABETA':
+            pass
 
     if player2version == -1:
         player2 = User('player2', env.state_size, env.action_size)
@@ -36,7 +40,11 @@ def playMatchesBetweenVersions(env, run_version_1,run_version_2, player1version,
         if player2version > 0:
             player2_network = player2_NN.read(env.name, run_version_2, player2version)
             player2_NN.model.set_weights(player2_network.get_weights())
-        player2 = Agent('player2', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, player2_NN)
+        
+        if TREE_TYPE == 'ISMCTS':
+            player2 = ISMCTS_Agent('player2', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, player2_NN)
+        elif TREE_TYPE == 'ALPHABETA':
+            pass
 
     scores, memory, points, sp_scores = playMatches(player1, player2, EPISODES, logger, turns_until_tau0, None, goes_first)
 

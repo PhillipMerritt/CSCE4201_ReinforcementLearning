@@ -6,9 +6,6 @@ import os
 
 import numpy as np
 np.set_printoptions(suppress=True)
-seed = 808 # np.random.random_integers(0,5000)
-#print(seed)
-np.random.seed(seed=seed)
 
 from shutil import copyfile
 from importlib import reload
@@ -18,8 +15,8 @@ import sys
 from keras.utils import plot_model
 
 from game import Game, GameState
-from agent import Agent, testing_agent
-from agent import User
+from agent import *
+from agent import *
 from memory import Memory
 from model import Residual_CNN
 from funcs import *
@@ -32,7 +29,7 @@ import initialise
 import pickle
 
 import config
-from config import PLAYER_COUNT, TEAM_SIZE, DECISION_TYPES, MEMORY_SIZE
+from config import PLAYER_COUNT, TEAM_SIZE, DECISION_TYPES, MEMORY_SIZE, TREE_TYPE
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -101,8 +98,12 @@ print('\n')
 
 ######## CREATE THE PLAYERS ########
 
-current_player = Agent('current_player', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, current_NN)
-best_player = Agent('best_player', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, best_NN)
+if TREE_TYPE == 'ISMCTS':
+    current_player = ISMCTS_Agent('current_player', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, current_NN)
+    best_player = ISMCTS_Agent('best_player', env.state_size, env.action_size, config.MCTS_SIMS, config.CPUCT, best_NN)
+elif TREE_TYPE == 'ALPHABETA':
+    pass
+
 
 if initialise.INITIAL_ITERATION != None:
     iteration = initialise.INITIAL_ITERATION
@@ -158,22 +159,6 @@ while 1:
             lg.logger_memory.info('NEW MEMORIES')
             lg.logger_memory.info('====================')
 
-            """memory_samp = random.sample(memory.ltmemory, min(1000, len(memory.ltmemory)))
-
-            for s in memory_samp:
-                current_value, current_probs, _ = current_player.get_preds(s['state'],d_t)
-                best_value, best_probs, _ = best_player.get_preds(s['state'],d_t)
-
-                lg.logger_memory.info('MCTS VALUE FOR %s: %f', s['playerTurn'], s['value'])
-                lg.logger_memory.info('CUR PRED VALUE FOR %s: %f', s['playerTurn'], current_value)
-                lg.logger_memory.info('BES PRED VALUE FOR %s: %f', s['playerTurn'], best_value)
-                lg.logger_memory.info('THE MCTS ACTION VALUES: %s', ['%.2f' % elem for elem in s['AV']])
-                lg.logger_memory.info('CUR PRED ACTION VALUES: %s', ['%.2f' % elem for elem in current_probs])
-                lg.logger_memory.info('BES PRED ACTION VALUES: %s', ['%.2f' % elem for elem in best_probs])
-                lg.logger_memory.info('ID: %s', s['state'].id)
-                lg.logger_memory.info('INPUT TO MODEL: %s', current_player.model[d_t].convertToModelInput(s['state']))
-
-                s['state'].render(lg.logger_memory)"""
     
     if trained:
         ######## TOURNAMENT ########

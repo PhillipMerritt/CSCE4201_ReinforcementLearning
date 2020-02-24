@@ -353,12 +353,6 @@ class GameState():
             if len(hand) == 0:
                 return 1
         if False not in self.passed:
-            """print(self.hands)
-            print(self.passed)
-            print("Train 0 head: {0}, marked: {1}".format(self.trains[0].head, self.trains[0].marked))
-            print("Train 1 head: {0}, marked: {1}".format(self.trains[1].head, self.trains[1].marked))
-            print("Train mex head: {0}, marked: {1}".format(self.trains[2].head, self.trains[2].marked))
-            exit(0)"""
             return 1
 
         return 0

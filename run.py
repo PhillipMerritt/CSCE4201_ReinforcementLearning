@@ -91,8 +91,8 @@ else:
 # copy the config file to the run folder
 copyfile('./config.py', run_folder + 'config.py')
 
-for i in range(DECISION_TYPES):
-    plot_model(current_NN[i].model, to_file=run_folder + 'models/decision_' + str(i) + '_model.png', show_shapes=True)
+# for i in range(DECISION_TYPES):
+#     plot_model(current_NN[i].model, to_file=run_folder + 'models/decision_' + str(i) + '_model.png', show_shapes=True)
 
 print('\n')
 
